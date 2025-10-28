@@ -6,6 +6,12 @@
 
 Model Context Protocol tooling for automating [OpenVSP](https://openvsp.org/) geometry edits and [VSPAero](https://openvsp.org/vspaero) runs. It bundles the scripting glue—`.vspscript` generation, CLI execution, response parsing—so agents can drive geometry changes and aerodynamics batches without hand-maintaining shell wrappers.
 
+## Why you might want this
+
+- **Batch geometry tweaks** – adjust span, sweep, twist, etc. from an automated workflow and inspect the generated `.vspscript` for peer review.
+- **Chain into VSPAero** – the same request can trigger a [VSPAero](https://openvsp.org/vspaero) run and return the `.adb` output so optimisation loops can proceed.
+- **Leave an audit trail** – responses include script locations and case names, making it easy to archive or replay studies.
+
 ## Features
 
 - Declarative request/response models for geometry edits and optional VSPAero sweeps.
@@ -78,6 +84,8 @@ uv pip install --system -e .[dev]
 uv run ruff check .
 uv run pytest
 ```
+
+Tests use mocked OpenVSP/VSPAero calls so newcomers can see the minimum payload without installing the solvers.
 
 ## License
 

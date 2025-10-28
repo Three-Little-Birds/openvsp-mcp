@@ -22,6 +22,7 @@ def _fake_run(
 
 
 def test_execute_openvsp(tmp_path: Path) -> None:
+    """Demonstrate how a geometry edit request is translated into CLI calls."""
     request = OpenVSPRequest(
         geometry_file="models/demo.vsp3",
         set_commands=[VSPCommand(command="vsp_set wing Span 0.5")],
@@ -37,6 +38,7 @@ def test_execute_openvsp(tmp_path: Path) -> None:
 
 
 def test_fastapi_endpoint(tmp_path: Path) -> None:
+    """Exercise the HTTP layer so agents can copy a working JSON request."""
     app = create_app()
     client = TestClient(app)
     payload = {
