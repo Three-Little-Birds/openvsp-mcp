@@ -4,7 +4,7 @@
 [![Python](https://img.shields.io/badge/python-3.10+-brightgreen.svg)](pyproject.toml)
 [![CI](https://github.com/yevheniikravchuk/openvsp-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yevheniikravchuk/openvsp-mcp/actions/workflows/ci.yml)
 
-Model Context Protocol tooling for automating [OpenVSP](https://openvsp.org/) geometry edits and [VSPAero](https://openvsp.org/vspaero) runs. The package delivers reusable Pydantic models, a FastAPI surface, and python-sdk integration hooks so teams can embed OpenVSP in their own agents without inheriting Orthodrone-specific assumptions.
+Model Context Protocol tooling for automating [OpenVSP](https://openvsp.org/) geometry edits and [VSPAero](https://openvsp.org/vspaero) runs. It bundles the scripting glue—`.vspscript` generation, CLI execution, response parsing—so agents can drive geometry changes and aerodynamics batches without hand-maintaining shell wrappers.
 
 ## Features
 
