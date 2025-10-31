@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-brightgreen.svg)](pyproject.toml)
-[![CI](https://github.com/yevheniikravchuk/openvsp-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yevheniikravchuk/openvsp-mcp/actions/workflows/ci.yml)
+[![CI](https://github.com/Three-Little-Birds/openvsp-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Three-Little-Birds/openvsp-mcp/actions/workflows/ci.yml)
 
 This package shows how to teach an MCP agent to edit [OpenVSP](https://openvsp.org/) designs, run [VSPAero](https://openvsp.org/vspaero) analyses, and collect aerodynamic metrics in a repeatable way. Think of it as a tutorial that replaces brittle `.vspscript` snippets with clean Python models.
 
@@ -25,7 +25,7 @@ Optional: install `paraview` or the OpenVSP GUI if you want to visualise the geo
 ## Step 1 – Install the wrapper
 
 ```bash
-uv pip install "git+https://github.com/yevheniikravchuk/openvsp-mcp.git"
+uv pip install "git+https://github.com/Three-Little-Birds/openvsp-mcp.git"
 ```
 
 Set `OPENVSP_BIN` or `VSPAERO_BIN` if the executables are not on `PATH`.

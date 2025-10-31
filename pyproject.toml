@@ -19,8 +19,8 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yevheniikravchuk/openvsp-mcp"
-Repository = "https://github.com/yevheniikravchuk/openvsp-mcp"
+Homepage = "https://github.com/Three-Little-Birds/openvsp-mcp"
+Repository = "https://github.com/Three-Little-Birds/openvsp-mcp"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
