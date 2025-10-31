@@ -1,95 +1,75 @@
-# openvsp-mcp · Hands-On VSP Automation for Everyone
+# openvsp-mcp · Parametric geometry for MCP workflows
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10+-brightgreen.svg)](pyproject.toml)
-[![CI](https://github.com/Three-Little-Birds/openvsp-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Three-Little-Birds/openvsp-mcp/actions/workflows/ci.yml)
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB.svg" alt="Python 3.10 or newer"></a>
+  <a href="https://github.com/Three-Little-Birds/openvsp-mcp/actions/workflows/ci.yml"><img src="https://github.com/Three-Little-Birds/openvsp-mcp/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/status-stable-4caf50.svg" alt="Project status: stable">
+  <img src="https://img.shields.io/badge/MCP-tooling-blueviolet.svg" alt="MCP tooling badge">
+</p>
 
-This package shows how to teach an MCP agent to edit [OpenVSP](https://openvsp.org/) designs, run [VSPAero](https://openvsp.org/vspaero) analyses, and collect aerodynamic metrics in a repeatable way. Think of it as a tutorial that replaces brittle `.vspscript` snippets with clean Python models.
+> **TL;DR**: Automate [OpenVSP](https://openvsp.org/) geometry edits and VSPAero runs so agents can generate meshes, scripts, and aerodynamic coefficients without manual GUI steps.
 
-## Learning outcomes
+## Table of contents
 
-- Install and configure OpenVSP/VSPAero for scripted use.
-- Generate and run your first `.vspscript` file directly from Python.
-- Wire the python-sdk tool so an agent can tweak geometry parameters (“add 10% span” or “rerun VSPAero at 80 m/s”).
+1. [Why agents love it](#why-agents-love-it)
+2. [Quickstart](#quickstart)
+3. [Run as a service](#run-as-a-service)
+4. [Agent playbook](#agent-playbook)
+5. [Stretch ideas](#stretch-ideas)
+6. [Accessibility & upkeep](#accessibility--upkeep)
+7. [Contributing](#contributing)
 
-## Before you start
+## Why agents love it
 
-| Requirement | Notes |
-| ----------- | ----- |
-| OpenVSP 3.38+ | Download from [openvsp.org](https://openvsp.org/download/) and make `vsp` available on `PATH`. |
-| VSPAero | Ships with OpenVSP; ensure `vspaero` can run from the terminal. |
-| Python 3.10+ + `uv` | Used to install dependencies and run examples. |
+| Persona | Immediate win | Scales because… |
+|---------|----------------|-----------------
+| **New users** | One command produces a `.vsp3` copy, applies scripted tweaks, and runs VSPAero — no CAD background required. | The wrapper ships ready-made examples, typed requests, and clean output folders, aligning with modern README guidance on “show, don’t tell.”【turn0search0】 |
+| **Experienced teams** | Expose OpenVSP/VSPAero functionality to MCP agents over REST or STDIO. | Deterministic logs (`stdout.log`, `vspaero_metrics.json`) make it drop-in for CI, optimisation loops, and audit trails.
 
-Optional: install `paraview` or the OpenVSP GUI if you want to visualise the geometry after each run.
+## Quickstart
 
-## Step 1 – Install the wrapper
+### 1. Install the package
 
 ```bash
 uv pip install "git+https://github.com/Three-Little-Birds/openvsp-mcp.git"
 ```
 
-Set `OPENVSP_BIN` or `VSPAERO_BIN` if the executables are not on `PATH`.
+Ensure `vsp` and `vspaero` are reachable. If not:
 
-## Step 2 – Script your first geometry change
+```bash
+export OPENVSP_BIN=/Applications/OpenVSP/vsp
+export VSPAERO_BIN=/Applications/OpenVSP/vspaero
+```
+
+### 2. Run a scripted geometry edit
 
 ```python
-from pathlib import Path
+from openvsp_mcp import OpenVSPRequest, execute_openvsp
 
-from openvsp_mcp import GeometryRequest, run_geometry_edit
-
-request = GeometryRequest(
-    source_vsp3="baseline.vsp3",
-    wing_span_scale=1.1,     # +10% span
-    wing_twist_delta_deg=2.0,
+request = OpenVSPRequest(
+    geometry_file="examples/blended_wing.vsp3",
+    set_commands=["SetParmVal( 'WingGeom', 'X_Root', 'Design', 3.0 )"],
+    run_vspaero=True,
+    case_name="wing_trim",
 )
-
-response = run_geometry_edit(request)
-print("Edited file:", response.output_vsp3)
-print("Script written to:", response.script_path)
+response = execute_openvsp(request)
+print("Outputs live in", response.output_dir)
 ```
 
-Open the resulting `.vsp3` in the GUI to confirm the change. The response also stores the generated `.vspscript` so you can audit every command that was executed.
+`response` includes the updated `.vsp3`, the command script, and VSPAero CSVs for immediate plotting.
 
-## Step 3 – Add an aerodynamic sweep with VSPAero
+## Run as a service
 
-```python
-from openvsp_mcp import AeroRequest, run_aero_analysis
-
-aero = AeroRequest(
-    source_vsp3=response.output_vsp3,
-    alpha_start_deg=-2,
-    alpha_end_deg=12,
-    alpha_step_deg=2,
-    mach=0.12,
-    reference_velocity_m_s=70.0,
-)
-
-aero_response = run_aero_analysis(aero)
-print("ADB output:", aero_response.adb_path)
-print("CSV summary:", aero_response.csv_path)
-```
-
-Load the CSV into a notebook to plot lift/drag or inspect convergence metrics.
-
-## Step 4 – Let an MCP agent drive the workflow
-
-### FastAPI microservice
-
-```python
-from openvsp_mcp.fastapi_app import create_app
-
-app = create_app()
-```
-
-Launch the docs:
+### FastAPI (REST)
 
 ```bash
 uv run uvicorn openvsp_mcp.fastapi_app:create_app --factory --port 8002
 ```
 
-Use the Swagger UI to try `/geometry` and `/aero` endpoints interactively.
+Upload a `.vsp3` and JSON request at `http://127.0.0.1:8002/docs`.
 
-### python-sdk tool
+### python-sdk tool (STDIO / MCP)
 
 ```python
 from mcp.server.fastmcp import FastMCP
@@ -102,24 +82,30 @@ if __name__ == "__main__":
     mcp.run()
 ```
 
-In your MCP client, call `openvsp-mcp.geometry` with a set of wing modifiers, then chain `openvsp-mcp.vspaero` to fetch aerodynamic coefficients.
+Then launch with `uv run mcp dev examples/openvsp_tool.py` and connect your agent.
 
-## Stretch exercises
+## Agent playbook
 
-- **Parameter sweep:** loop over a dictionary of span/twist changes and chart the resulting lift curve slope.
-- **Geometry morphing:** feed the tool a series of fuselage length adjustments and generate a GIF from the saved `.vsp3` files.
-- **Design review:** archive the generated `.vspscript` files alongside optimisation runs so teammates can reproduce results.
+- **Geometry studies** – script sweep operations (span, twist, control surface deflections) and archive each variant.
+- **Aerodynamic coefficients** – hand VSPAero results to `ctrltest-mcp` or custom controllers.
+- **Mesh exports** – agents can request STL/OBJ assets for CFD or manufacturing pipelines.
 
-## Developing the package
+## Stretch ideas
 
-```bash
-uv pip install --system -e .[dev]
-uv run ruff check .
-uv run pytest
-```
+1. Pair with `foam-agent-mcp-core` to auto-generate mesh-ready cases.
+2. Use deck.gl to visualise planform edits by surfacing geometry metadata in the response.
+3. Schedule nightly configuration sweeps (span × sweep × incidence) and store the results for design-of-experiments studies.
 
-Tests mock the CLI to demonstrate the expected inputs/outputs before you work with real binaries.
+## Accessibility & upkeep
 
-## License
+- Badges contain alt text and are limited for readability, keeping with modern README guidance.【turn0search0】
+- Run `uv run pytest` before committing; tests mock VSPAero calls so they finish quickly.
+- Keep OpenVSP/VSPAero versions consistent across developers to avoid geometry mismatches.
 
-MIT — see [LICENSE](LICENSE).
+## Contributing
+
+1. `uv pip install --system -e .[dev]`
+2. Run `uv run ruff check .` and `uv run pytest`
+3. Submit PRs with sample scripts or geometry diffs so reviewers can validate quickly.
+
+MIT license — see [LICENSE](LICENSE).
