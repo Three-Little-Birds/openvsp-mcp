@@ -61,6 +61,15 @@ print("Outputs live in", response.output_dir)
 
 ## Run as a service
 
+### CLI (STDIO transport)
+
+```bash
+uvx openvsp-mcp  # runs the MCP over stdio
+# or python -m openvsp_mcp
+```
+
+Use `python -m openvsp_mcp --describe` to inspect metadata without starting the server.
+
 ### FastAPI (REST)
 
 ```bash
