@@ -24,7 +24,7 @@
 
 | Persona | Immediate win | Scales because... |
 |---------|----------------|-----------------
-| **New users** | One command produces a `.vsp3` copy, applies scripted tweaks, and runs VSPAero - no CAD background required. | The wrapper ships ready-made examples, typed requests, and clean output folders, aligning with modern README guidance on "show, don't tell."[turn0search0] |
+| **New users** | One command produces a `.vsp3` copy, applies scripted tweaks, and runs VSPAero - no CAD background required. | The wrapper ships ready-made examples, typed requests, and clean output folders, aligning with modern README guidance on "show, don't tell." |
 | **Experienced teams** | Expose OpenVSP/VSPAero functionality to MCP agents over REST or STDIO. | Deterministic logs (`stdout.log`, `vspaero_metrics.json`) make it drop-in for CI, optimisation loops, and audit trails.
 
 ## Quickstart
@@ -98,7 +98,7 @@ Then launch with `uv run mcp dev examples/openvsp_tool.py` and connect your agen
 
 ## Accessibility & upkeep
 
-- Badges contain alt text and are limited for readability, keeping with modern README guidance.[turn0search0]
+- Badges contain alt text and are limited for readability, keeping with modern README guidance.
 - Run `uv run pytest` before committing; tests mock VSPAero calls so they finish quickly.
 - Keep OpenVSP/VSPAero versions consistent across developers to avoid geometry mismatches.
 
