@@ -1,4 +1,4 @@
-# openvsp-mcp · Parametric geometry for MCP workflows
+# openvsp-mcp - Parametric geometry for MCP workflows
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
@@ -22,9 +22,9 @@
 
 ## Why agents love it
 
-| Persona | Immediate win | Scales because… |
+| Persona | Immediate win | Scales because... |
 |---------|----------------|-----------------
-| **New users** | One command produces a `.vsp3` copy, applies scripted tweaks, and runs VSPAero — no CAD background required. | The wrapper ships ready-made examples, typed requests, and clean output folders, aligning with modern README guidance on “show, don’t tell.”【turn0search0】 |
+| **New users** | One command produces a `.vsp3` copy, applies scripted tweaks, and runs VSPAero - no CAD background required. | The wrapper ships ready-made examples, typed requests, and clean output folders, aligning with modern README guidance on "show, don't tell."[turn0search0] |
 | **Experienced teams** | Expose OpenVSP/VSPAero functionality to MCP agents over REST or STDIO. | Deterministic logs (`stdout.log`, `vspaero_metrics.json`) make it drop-in for CI, optimisation loops, and audit trails.
 
 ## Quickstart
@@ -86,19 +86,19 @@ Then launch with `uv run mcp dev examples/openvsp_tool.py` and connect your agen
 
 ## Agent playbook
 
-- **Geometry studies** – script sweep operations (span, twist, control surface deflections) and archive each variant.
-- **Aerodynamic coefficients** – hand VSPAero results to `ctrltest-mcp` or custom controllers.
-- **Mesh exports** – agents can request STL/OBJ assets for CFD or manufacturing pipelines.
+- **Geometry studies** - script sweep operations (span, twist, control surface deflections) and archive each variant.
+- **Aerodynamic coefficients** - hand VSPAero results to `ctrltest-mcp` or custom controllers.
+- **Mesh exports** - agents can request STL/OBJ assets for CFD or manufacturing pipelines.
 
 ## Stretch ideas
 
 1. Pair with `foam-agent-mcp-core` to auto-generate mesh-ready cases.
 2. Use deck.gl to visualise planform edits by surfacing geometry metadata in the response.
-3. Schedule nightly configuration sweeps (span × sweep × incidence) and store the results for design-of-experiments studies.
+3. Schedule nightly configuration sweeps (span x sweep x incidence) and store the results for design-of-experiments studies.
 
 ## Accessibility & upkeep
 
-- Badges contain alt text and are limited for readability, keeping with modern README guidance.【turn0search0】
+- Badges contain alt text and are limited for readability, keeping with modern README guidance.[turn0search0]
 - Run `uv run pytest` before committing; tests mock VSPAero calls so they finish quickly.
 - Keep OpenVSP/VSPAero versions consistent across developers to avoid geometry mismatches.
 
@@ -108,4 +108,4 @@ Then launch with `uv run mcp dev examples/openvsp_tool.py` and connect your agen
 2. Run `uv run ruff check .` and `uv run pytest`
 3. Submit PRs with sample scripts or geometry diffs so reviewers can validate quickly.
 
-MIT license — see [LICENSE](LICENSE).
+MIT license - see [LICENSE](LICENSE).
