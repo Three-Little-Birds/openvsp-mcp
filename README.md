@@ -93,6 +93,17 @@ if __name__ == "__main__":
 
 Then launch with `uv run mcp dev examples/openvsp_tool.py` and connect your agent.
 
+### ToolHive smoke test
+
+Requires exported binaries and a geometry file reachable inside the container:
+
+```bash
+export OPENVSP_BIN=/path/to/vsp
+export VSPAERO_BIN=/path/to/vspaero    # optional
+export OPENVSP_GEOMETRY=/path/to/model.vsp3
+uvx --with 'mcp==1.20.0' python scripts/integration/run_openvsp.py
+```
+
 ## Agent playbook
 
 - **Geometry studies** - script sweep operations (span, twist, control surface deflections) and archive each variant.
