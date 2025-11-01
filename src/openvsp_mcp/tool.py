@@ -9,10 +9,18 @@ from .models import OpenVSPRequest, OpenVSPResponse
 
 
 def build_tool(app: FastMCP) -> None:
-    """Register the OpenVSP tool on the given MCP app."""
+    """Register OpenVSP automation tooling on an MCP server."""
 
-    @app.tool()
-    def vsp(request: OpenVSPRequest) -> OpenVSPResponse:  # type: ignore[valid-type]
+    @app.tool(
+        name="openvsp.run_vsp",
+        description=(
+            "Run OpenVSP/VSPAero scripts. Provide geometry operations and analyses to execute. "
+            "Returns output archive paths and solver metadata. "
+            "Example: {\"script\": \"load wing.vsp3; analysis set vspaero\"}"
+        ),
+        meta={"version": "0.1.0", "categories": ["geometry", "aero"]},
+    )
+    def vsp(request: OpenVSPRequest) -> OpenVSPResponse:
         return execute_openvsp(request)
 
 
