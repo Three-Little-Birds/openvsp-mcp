@@ -11,7 +11,7 @@
 
 ## Table of contents
 
-1. [Why agents love it](#why-agents-love-it)
+1. [What it provides](#what-it-provides)
 2. [Quickstart](#quickstart)
 3. [Run as a service](#run-as-a-service)
 4. [Agent playbook](#agent-playbook)
@@ -19,12 +19,13 @@
 6. [Accessibility & upkeep](#accessibility--upkeep)
 7. [Contributing](#contributing)
 
-## Why agents love it
+## What it provides
 
-| Persona | Immediate win | Scales because... |
-|---------|----------------|-----------------
-| **New users** | One command produces a `.vsp3` copy, applies scripted tweaks, and runs VSPAero - no CAD background required. | The wrapper ships ready-made examples, typed requests, and clean output folders, aligning with modern README guidance on "show, don't tell." |
-| **Experienced teams** | Expose OpenVSP/VSPAero functionality to MCP agents over REST or STDIO. | Deterministic logs (`stdout.log`, `vspaero_metrics.json`) make it drop-in for CI, optimisation loops, and audit trails.
+| Scenario | Value |
+|----------|-------|
+| OpenVSP scripting | Automate [OpenVSP](https://openvsp.org/) commands (set parameters, duplicate geometries, export meshes) without opening the GUI. |
+| VSPAero batch runs | Launch [VSPAero](https://vspu.larc.nasa.gov/) cases and capture generated metrics/CSV files for downstream optimisation. |
+| MCP transport | Publish the same functionality over STDIO or HTTP via the Model Context Protocol so ToolHive or other clients can drive geometry studies remotely. |
 
 ## Quickstart
 
