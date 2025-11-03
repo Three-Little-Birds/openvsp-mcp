@@ -61,11 +61,12 @@ print("Outputs live in", response.output_dir)
 
 ## Run as a service
 
-### CLI (STDIO transport)
+### CLI (STDIO / Streamable HTTP)
 
 ```bash
 uvx openvsp-mcp  # runs the MCP over stdio
 # or python -m openvsp_mcp
+python -m openvsp_mcp --transport streamable-http --host 0.0.0.0 --port 8000 --path /mcp
 ```
 
 Use `python -m openvsp_mcp --describe` to inspect metadata without starting the server.
@@ -102,6 +103,8 @@ export OPENVSP_BIN=/path/to/vsp
 export VSPAERO_BIN=/path/to/vspaero    # optional
 export OPENVSP_GEOMETRY=/path/to/model.vsp3
 uvx --with 'mcp==1.20.0' python scripts/integration/run_openvsp.py
+# ToolHive 2025+ defaults to Streamable HTTP; select the same transport when registering
+# the workload manually to avoid the legacy SSE 502 proxy issue.
 ```
 
 ## Agent playbook
