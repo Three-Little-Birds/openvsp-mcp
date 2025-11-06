@@ -42,8 +42,7 @@ def execute_openvsp(request: OpenVSPRequest) -> OpenVSPResponse:
         except FileNotFoundError as exc:  # pragma: no cover
             raise RuntimeError("OpenVSP binary not found") from exc
 
-        ok_exit_codes = {0, 160, 224}
-        if result.returncode not in ok_exit_codes:
+        if result.returncode not in _OK_EXIT_CODES:
             message = result.stderr.decode("utf-8", errors="ignore").strip()
             if not message:
                 message = result.stdout.decode("utf-8", errors="ignore").strip() or "OpenVSP script execution failed"
@@ -104,4 +103,7 @@ def _write_script(request: OpenVSPRequest, working_dir: Path) -> Path:
     return script_path
 
 
-__all__ = ["execute_openvsp", "OPENVSP_BIN", "VSPAERO_BIN"]
+_OK_EXIT_CODES = {0, 160, 224}
+
+
+__all__ = ["execute_openvsp", "OPENVSP_BIN", "VSPAERO_BIN", "_OK_EXIT_CODES", "_write_script"]

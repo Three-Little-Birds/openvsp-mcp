@@ -11,6 +11,10 @@ class VSPCommand(BaseModel):
     command: str = Field(..., description="Literal line inserted into the VSP script")
 
 
+class OpenVSPGeometryRequest(BaseModel):
+    geometry_file: str = Field(..., description="Path to the .vsp3 file")
+
+
 class OpenVSPRequest(BaseModel):
     """Parameters controlling geometry edits and optional VSPAero run."""
 
@@ -18,6 +22,14 @@ class OpenVSPRequest(BaseModel):
     set_commands: list[VSPCommand] = Field(default_factory=list, description="Commands to run")
     run_vspaero: bool = Field(True, description="Execute VSPAero after editing geometry")
     case_name: str = Field("case", description="Base name for generated results")
+
+
+class OpenVSPInspectResponse(BaseModel):
+    """High-level summary of a geometry."""
+
+    geom_ids: list[str] = Field(..., description="Top-level geometry IDs discovered")
+    wing_names: list[str] = Field(default_factory=list, description="Detected wing geometry names")
+    info_log: str = Field(..., description="Raw output from OpenVSP describe command")
 
 
 class OpenVSPResponse(BaseModel):

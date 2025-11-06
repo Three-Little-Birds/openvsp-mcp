@@ -98,7 +98,13 @@ uvx openvsp-mcp  # runs the MCP over stdio
 python -m openvsp_mcp --transport streamable-http --host 0.0.0.0 --port 8000 --path /mcp
 ```
 
-Use `python -m openvsp_mcp --describe` to inspect metadata without starting the server.
+Registered tools:
+
+- `openvsp.inspect` – describe a geometry without modifying it.
+- `openvsp.modify` – apply scripted parameter edits (no VSPAero).
+- `openvsp.run_vspaero` – run edits followed by VSPAero.
+
+Use `python -m openvsp_mcp --describe` to list the tools at runtime.
 
 ### FastAPI (REST)
 
@@ -106,7 +112,13 @@ Use `python -m openvsp_mcp --describe` to inspect metadata without starting the 
 uv run uvicorn openvsp_mcp.fastapi_app:create_app --factory --port 8002
 ```
 
-Upload a `.vsp3` and JSON request at `http://127.0.0.1:8002/docs`.
+Endpoints:
+
+- `POST /vsp/inspect` → `OpenVSPInspectResponse`
+- `POST /vsp/modify` → run edits only
+- `POST /vsp/run` → run edits + VSPAero
+
+All operations return structured JSON; explore them via the interactive docs at `http://127.0.0.1:8002/docs`.
 
 ### python-sdk tool (STDIO / MCP)
 
