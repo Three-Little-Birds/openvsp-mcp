@@ -35,7 +35,7 @@
 uv pip install "git+https://github.com/Three-Little-Birds/openvsp-mcp.git"
 ```
 
-Ensure `vsp` and `vspaero` are reachable. If not:
+Install the official binaries from the [OpenVSP download page](https://openvsp.org/download.php) (VSPAero ships with the desktop release). Verify they are in your `PATH`:
 
 ```bash
 export OPENVSP_BIN=/Applications/OpenVSP/vsp
@@ -48,16 +48,19 @@ export VSPAERO_BIN=/Applications/OpenVSP/vspaero
 from openvsp_mcp import OpenVSPRequest, execute_openvsp
 
 request = OpenVSPRequest(
-    geometry_file="examples/blended_wing.vsp3",
-    set_commands=["SetParmVal( 'WingGeom', 'X_Root', 'Design', 3.0 )"],
+    geometry_file="path/to/model.vsp3",  # supply your own geometry
+    set_commands=["SetParmVal('WingGeom', 'X_Root', 'Design', 3.0)"],
     run_vspaero=True,
     case_name="wing_trim",
 )
 response = execute_openvsp(request)
-print("Outputs live in", response.output_dir)
+print("Updated geometry:", response.updated_geometry)
+print("VSPAero results:", response.vspaero_results)
 ```
 
-`response` includes the updated `.vsp3`, the command script, and VSPAero CSVs for immediate plotting.
+The response surfaces the updated `.vsp3`, the VSP script, any mesh exports, and the VSPAero CSVs/metadata so you can plot or archive them programmatically.
+
+Need a starter geometry? The OpenVSP distribution bundles sample models under `docs/examples/`; copy one (e.g., `BWB_Ames.vsp3`) and point `geometry_file` to that path while you experiment.
 
 ## Run as a service
 
