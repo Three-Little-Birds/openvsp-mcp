@@ -1,6 +1,6 @@
 [project]
 name = "openvsp-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Domain-neutral MCP helpers for OpenVSP and VSPAero automation"
 authors = [{ name = "OpenVSP MCP Maintainers" }]
 readme = "README.md"
