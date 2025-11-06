@@ -45,11 +45,11 @@ export VSPAERO_BIN=/Applications/OpenVSP/vspaero
 ### 2. Run a scripted geometry edit
 
 ```python
-from openvsp_mcp import OpenVSPRequest, execute_openvsp
+from openvsp_mcp import OpenVSPRequest, VSPCommand, execute_openvsp
 
 request = OpenVSPRequest(
     geometry_file="~/OpenVSP/examples/BWB_Ames.vsp3",  # shipped with OpenVSP
-    set_commands=["SetParmVal('WingGeom', 'X_Root', 'Design', 3.0)"],
+    set_commands=[VSPCommand(command="SetParmVal('WingGeom', 'X_Root', 'Design', 3.0)")],
     run_vspaero=True,
     case_name="wing_trim",
 )
