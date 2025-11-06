@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 from http import HTTPStatus
 from pathlib import Path
 from unittest import mock
+
+from importlib import resources
 
 from fastapi.testclient import TestClient
 
@@ -32,7 +35,7 @@ def _fake_describe_run(
     check: bool,
     capture_output: bool,
 ) -> subprocess.CompletedProcess[bytes]:
-    stdout = b"random\n__MCP_BEGIN__\nGeom ID: WSSXBIILZN\nWing: RectWing\n__MCP_END__\n"
+    stdout = b""
     return subprocess.CompletedProcess(args, 0, stdout, b"")
 
 
@@ -72,7 +75,10 @@ def test_fastapi_endpoint(tmp_path: Path) -> None:
 
 
 def test_describe_geometry(tmp_path: Path) -> None:
-    request = OpenVSPGeometryRequest(geometry_file="models/demo.vsp3")
+    with resources.as_file(resources.files("openvsp_mcp.data") / "rect_wing.vsp3") as src:
+        geom_path = tmp_path / "rect.vsp3"
+        shutil.copy(src, geom_path)
+    request = OpenVSPGeometryRequest(geometry_file=str(geom_path))
 
     with mock.patch("openvsp_mcp.describe.subprocess.run", side_effect=_fake_describe_run):
         response = describe_geometry(request.geometry_file)
