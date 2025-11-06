@@ -35,7 +35,7 @@
 uv pip install "git+https://github.com/Three-Little-Birds/openvsp-mcp.git"
 ```
 
-Install the official binaries from the [OpenVSP download page](https://openvsp.org/download.php) (VSPAero ships with the desktop release). Verify they are in your `PATH`:
+Install the official binaries from the [OpenVSP download page](https://openvsp.org/download.php) (this wrapper was tested with OpenVSP/VSPAero 3.46.0 on macOS). Verify they are in your `PATH`:
 
 ```bash
 export OPENVSP_BIN=/Applications/OpenVSP/vsp
@@ -48,19 +48,22 @@ export VSPAERO_BIN=/Applications/OpenVSP/vspaero
 from openvsp_mcp import OpenVSPRequest, execute_openvsp
 
 request = OpenVSPRequest(
-    geometry_file="path/to/model.vsp3",  # supply your own geometry
+    geometry_file="~/OpenVSP/examples/BWB_Ames.vsp3",  # shipped with OpenVSP
     set_commands=["SetParmVal('WingGeom', 'X_Root', 'Design', 3.0)"],
     run_vspaero=True,
     case_name="wing_trim",
 )
 response = execute_openvsp(request)
-print("Updated geometry:", response.updated_geometry)
-print("VSPAero results:", response.vspaero_results)
+print("Script used:", response.script_path)
+print("ADB path:", response.result_path)  # None when run_vspaero=False
 ```
 
-The response surfaces the updated `.vsp3`, the VSP script, any mesh exports, and the VSPAero CSVs/metadata so you can plot or archive them programmatically.
+`OpenVSPResponse` contains:
 
-Need a starter geometry? The OpenVSP distribution bundles sample models under `docs/examples/`; copy one (e.g., `BWB_Ames.vsp3`) and point `geometry_file` to that path while you experiment.
+- `script_path` – absolute path to the generated `.vspscript` you can archive for repeatability.
+- `result_path` – VSPAero `.adb` file (string) when `run_vspaero=True`, otherwise `None`. Meshes, CSVs, and other artefacts are emitted by OpenVSP next to your original `.vsp3`.
+
+Need a starter geometry? The OpenVSP installer places sample models under `docs/examples/` (e.g., `BWB_Ames.vsp3`, `CRM.vsp3`). Copy one to a scratch directory and point `geometry_file` at that path while you experiment.
 
 ## Run as a service
 
@@ -135,3 +138,4 @@ uvx --with 'mcp==1.20.0' python scripts/integration/run_openvsp.py
 3. Submit PRs with sample scripts or geometry diffs so reviewers can validate quickly.
 
 MIT license - see [LICENSE](LICENSE).
+- OpenVSP ships under NASA’s license; VSPAero usage must comply with the terms that accompany your download. Commercial redistribution generally requires a separate agreement—check the [official FAQ](https://openvsp.org/#license) before packaging binaries into your MCP workloads.
