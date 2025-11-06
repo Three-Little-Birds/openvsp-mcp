@@ -36,6 +36,9 @@ package-dir = {"" = "src"}
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+openvsp_mcp = ["data/*.vsp3"]
+
 [tool.ruff]
 line-length = 100
 

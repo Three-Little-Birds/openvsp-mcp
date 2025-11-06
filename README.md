@@ -42,20 +42,43 @@ export OPENVSP_BIN=/Applications/OpenVSP/vsp
 export VSPAERO_BIN=/Applications/OpenVSP/vspaero
 ```
 
+> **Tip (macOS/Linux):** if you prefer to avoid GUI installers, build the repo's ToolHive image and run the examples inside Docker:
+> ```bash
+> docker build -t openvsp-mcp-toolhive -f infra/docker/openvsp_toolhive/Dockerfile .
+> docker run --rm --entrypoint /usr/local/bin/vsp openvsp-mcp-toolhive --version
+> ```
+> Mount your geometry directory and set `OPENVSP_BIN=/usr/local/bin/vsp` when executing the Python snippets in-container.
+
 ### 2. Run a scripted geometry edit
 
 ```python
+from importlib import resources
+import shutil
+import tempfile
+from pathlib import Path
+
 from openvsp_mcp import OpenVSPRequest, VSPCommand, execute_openvsp
 
-request = OpenVSPRequest(
-    geometry_file="~/OpenVSP/examples/BWB_Ames.vsp3",  # shipped with OpenVSP
-    set_commands=[VSPCommand(command="SetParmVal('WingGeom', 'X_Root', 'Design', 3.0)")],
-    run_vspaero=True,
-    case_name="wing_trim",
-)
-response = execute_openvsp(request)
-print("Script used:", response.script_path)
-print("ADB path:", response.result_path)  # None when run_vspaero=False
+with resources.as_file(resources.files("openvsp_mcp.data") / "rect_wing.vsp3") as bundled:
+    with tempfile.TemporaryDirectory(prefix="openvsp_mcp_") as tmpdir:
+        geometry_path = Path(tmpdir) / "rect_wing.vsp3"
+        shutil.copy(bundled, geometry_path)
+
+        request = OpenVSPRequest(
+            geometry_file=str(geometry_path),
+            set_commands=[
+                VSPCommand(command='string geom_id = FindGeom("RectWing", 0)'),
+                VSPCommand(command='string span_id = GetParm( geom_id, "TotalSpan", "WingGeom" )'),
+                VSPCommand(command='SetParmVal( span_id, 12.0 )'),
+                VSPCommand(command='Update()'),
+            ],
+            run_vspaero=False,
+            case_name="rectwing_span12",
+        )
+
+        response = execute_openvsp(request)
+        print("Script used:", response.script_path)
+        print("ADB path:", response.result_path)  # None unless run_vspaero=True
 ```
 
 `OpenVSPResponse` contains:
@@ -63,7 +86,7 @@ print("ADB path:", response.result_path)  # None when run_vspaero=False
 - `script_path` – absolute path to the generated `.vspscript` you can archive for repeatability.
 - `result_path` – VSPAero `.adb` file (string) when `run_vspaero=True`, otherwise `None`. Meshes, CSVs, and other artefacts are emitted by OpenVSP next to your original `.vsp3`.
 
-Need a starter geometry? The OpenVSP installer places sample models under `docs/examples/` (e.g., `BWB_Ames.vsp3`, `CRM.vsp3`). Copy one to a scratch directory and point `geometry_file` at that path while you experiment.
+Need a starter geometry? The package ships with `openvsp_mcp.data/rect_wing.vsp3`, generated from a single OpenVSP wing primitive. The snippet above uses OpenVSP script helpers (`FindGeom` + `GetParm`) so it works out of the box. For your own models, open the geometry in the GUI, note the component name returned by `FindGeom`, and update the commands accordingly.
 
 ## Run as a service
 
