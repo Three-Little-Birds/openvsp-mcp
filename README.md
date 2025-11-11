@@ -9,6 +9,10 @@
 
 > **TL;DR**: Automate [OpenVSP](https://openvsp.org/) geometry edits and VSPAero runs so agents can generate meshes, scripts, and aerodynamic coefficients without manual GUI steps.
 
+<a href="https://glama.ai/mcp/servers/@yevheniikravchuk/openvsp-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@yevheniikravchuk/openvsp-mcp/badge" alt="OpenVSP Server MCP server" />
+</a>
+
 ## Table of contents
 
 1. [What it provides](#what-it-provides)
@@ -173,4 +177,4 @@ uvx --with 'mcp==1.20.0' python scripts/integration/run_openvsp.py
 3. Submit PRs with sample scripts or geometry diffs so reviewers can validate quickly.
 
 MIT license - see [LICENSE](LICENSE).
-- OpenVSP ships under NASA’s license; VSPAero usage must comply with the terms that accompany your download. Commercial redistribution generally requires a separate agreement—check the [official FAQ](https://openvsp.org/#license) before packaging binaries into your MCP workloads.
+- OpenVSP ships under NASA's license; VSPAero usage must comply with the terms that accompany your download. Commercial redistribution generally requires a separate agreement—check the [official FAQ](https://openvsp.org/#license) before packaging binaries into your MCP workloads.
