@@ -9,17 +9,21 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.13']
+        mcp-version: ['1.20.0', '1.*']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       - uses: astral-sh/setup-uv@v3
       - name: Create virtual environment
         run: uv venv
       - name: Install
         run: |
-          uv pip install -e .[dev]
+          uv pip install -e '.[dev]' 'mcp==${{ matrix.mcp-version }}'
       - name: Lint
         run: |
           uv run ruff check .

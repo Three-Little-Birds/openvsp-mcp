@@ -3,15 +3,25 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
+from pydantic import ValidationError
 
+from .aircraft import create_aircraft
 from .core import OPENVSP_BIN, VSPAERO_BIN, execute_openvsp
 from .describe import describe_geometry
 from .models import (
+    AircraftCreateRequest,
+    AircraftCreateResponse,
+    AircraftPlanRequest,
+    AircraftPlanResponse,
+    AircraftRevisionRequest,
+    AircraftRevisionResponse,
     OpenVSPGeometryRequest,
     OpenVSPInspectResponse,
     OpenVSPRequest,
     OpenVSPResponse,
 )
+from .planning import plan_aircraft
+from .revisions import RevisionSourceError, revise_aircraft
 
 
 def create_app() -> FastAPI:
@@ -20,6 +30,28 @@ def create_app() -> FastAPI:
         version="0.2.0",
         description="Inspect and automate OpenVSP geometry edits, with optional VSPAero runs.",
     )
+
+    @app.post("/vsp/aircraft", response_model=AircraftCreateResponse)
+    def build_aircraft(request: AircraftCreateRequest) -> AircraftCreateResponse:
+        try:
+            return create_aircraft(request)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    @app.post("/vsp/aircraft/plan", response_model=AircraftPlanResponse)
+    def plan(request: AircraftPlanRequest) -> AircraftPlanResponse:
+        return plan_aircraft(request)
+
+    @app.post("/vsp/aircraft/revise", response_model=AircraftRevisionResponse)
+    def revise(request: AircraftRevisionRequest) -> AircraftRevisionResponse:
+        try:
+            return revise_aircraft(request)
+        except RevisionSourceError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        except ValidationError as exc:
+            raise HTTPException(status_code=422, detail=exc.errors(include_context=False)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     @app.post("/vsp/inspect", response_model=OpenVSPInspectResponse)
     def inspect(request: OpenVSPGeometryRequest) -> OpenVSPInspectResponse:
@@ -51,4 +83,4 @@ def create_app() -> FastAPI:
 
 app = create_app()
 
-__all__ = ["create_app", "app"]
+__all__ = ["app", "create_app"]

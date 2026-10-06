@@ -1,64 +1,54 @@
-"""Utilities for read-only OpenVSP inspection."""
+"""Read saved OpenVSP parameters without executing or changing the model."""
 
 from __future__ import annotations
 
-import subprocess
-import tempfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-from .core import OPENVSP_BIN, _OK_EXIT_CODES, _write_script
-from .models import OpenVSPInspectResponse, OpenVSPRequest
+from .models import GeometryComponent, OpenVSPInspectResponse
+
+
+def read_geometry_root(geometry_file: str | Path) -> ET.Element:
+    try:
+        root = ET.parse(Path(geometry_file).expanduser()).getroot()
+    except (OSError, ET.ParseError) as exc:
+        raise RuntimeError(f"Cannot read OpenVSP model {geometry_file}: {exc}") from exc
+    if root.tag != "Vsp_Geometry":
+        raise RuntimeError(f"Not an OpenVSP .vsp3 model: {geometry_file}")
+    return root
 
 
 def describe_geometry(geometry_file: str) -> OpenVSPInspectResponse:
-    """Run OpenVSP in describe mode and parse high-level geometry information."""
-
-    with tempfile.TemporaryDirectory(prefix="openvsp_mcp_describe_") as tmpdir:
-        temp_request = OpenVSPRequest(
-            geometry_file=geometry_file,
-            set_commands=[],
-            run_vspaero=False,
-            case_name="describe",
+    root = read_geometry_root(geometry_file)
+    components = []
+    for geom in root.findall("Vehicle/Geom"):
+        parameters = {}
+        container = geom.find("ParmContainer")
+        if container is not None:
+            for group in container:
+                values = {
+                    parm.tag: float(parm.attrib["Value"])
+                    for parm in group
+                    if "Value" in parm.attrib
+                }
+                if values:
+                    parameters[group.tag] = values
+        components.append(
+            GeometryComponent(
+                geom_id=geom.findtext("ParmContainer/ID", ""),
+                name=geom.findtext("ParmContainer/Name", ""),
+                type_name=geom.findtext("GeomBase/TypeName", ""),
+                parameters=parameters,
+            )
         )
-        script_path = _write_script(temp_request, Path(tmpdir))
-
-        result = subprocess.run(
-            [OPENVSP_BIN, "-script", str(script_path)],
-            check=False,
-            capture_output=True,
-        )
-        if result.returncode not in _OK_EXIT_CODES:
-            message = result.stderr.decode("utf-8", errors="ignore").strip()
-            if not message:
-                message = result.stdout.decode("utf-8", errors="ignore").strip()
-            raise RuntimeError(message or "OpenVSP describe run failed")
-
-        tree = ET.parse(geometry_file)
-        root = tree.getroot()
-        geom_ids: list[str] = []
-        wing_names: list[str] = []
-        info_lines: list[str] = []
-
-        for geom in root.findall(".//Geom"):
-            name_elem = geom.find("ParmContainer/Name")
-            geom_name = name_elem.text if name_elem is not None else ""
-            id_elem = geom.find("ParmContainer/ID")
-            geom_id = id_elem.text if id_elem is not None else ""
-            type_elem = geom.find("GeomBase/TypeName")
-            geom_type = type_elem.text if type_elem is not None else ""
-
-            if geom_id:
-                geom_ids.append(geom_id)
-            if geom_type.lower() == "wing" and geom_name:
-                wing_names.append(geom_name)
-            info_lines.append(f"{geom_id or 'UNKNOWN'}:{geom_name or 'Unnamed'}:{geom_type or 'Unknown'}")
-
-        return OpenVSPInspectResponse(
-            geom_ids=geom_ids,
-            wing_names=wing_names,
-            info_log="\n".join(info_lines),
-        )
-
-
-__all__ = ["describe_geometry"]
+    return OpenVSPInspectResponse(
+        geom_ids=[component.geom_id for component in components if component.geom_id],
+        wing_names=[
+            component.name for component in components if component.type_name.lower() == "wing"
+        ],
+        info_log="\n".join(
+            f"{component.geom_id}:{component.name}:{component.type_name}"
+            for component in components
+        ),
+        components=components,
+    )

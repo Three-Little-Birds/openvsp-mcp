@@ -1,0 +1,57 @@
+{
+  "aircraft": {
+    "name": "research_uav",
+    "units": "m",
+    "fuselage": {
+      "length": 3,
+      "width": 0.32,
+      "height": 0.38
+    },
+    "wing": {
+      "span": 4,
+      "root_chord": 0.65,
+      "tip_chord": 0.32,
+      "x_le": 0.95,
+      "z": 0.1,
+      "sweep_deg": 7,
+      "dihedral_deg": 4,
+      "incidence_deg": 2,
+      "tip_twist_deg": -2,
+      "thickness_ratio": 0.12
+    },
+    "horizontal_tail": {
+      "span": 1.4,
+      "root_chord": 0.35,
+      "tip_chord": 0.18,
+      "x_le": 2.4,
+      "z": 0.15
+    },
+    "vertical_tail": {
+      "span": 0.65,
+      "root_chord": 0.45,
+      "tip_chord": 0.2,
+      "x_le": 2.35,
+      "z": 0.1,
+      "sweep_deg": 25
+    }
+  },
+  "constraints": [
+    {
+      "metric": "wing_span_m",
+      "maximum": 4.1
+    },
+    {
+      "metric": "wing_area_m2",
+      "minimum": 1.9,
+      "maximum": 2
+    },
+    {
+      "metric": "wing_aspect_ratio",
+      "minimum": 8
+    },
+    {
+      "metric": "aircraft_x_extent_m",
+      "maximum": 3.1
+    }
+  ]
+}

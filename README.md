@@ -1,175 +1,296 @@
-# openvsp-mcp - Parametric geometry for MCP workflows
+# openvsp-mcp
 
-<p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%2B-3776AB.svg" alt="Python 3.10 or newer"></a>
-  <a href="https://github.com/Three-Little-Birds/openvsp-mcp/actions/workflows/ci.yml"><img src="https://github.com/Three-Little-Birds/openvsp-mcp/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
-  <img src="https://img.shields.io/badge/MCP-tooling-blueviolet.svg" alt="MCP tooling badge">
-</p>
+Create and inspect parametric aircraft geometry through the Model Context Protocol.
+The same tools work over local stdio or Streamable HTTP.
 
-> **TL;DR**: Automate [OpenVSP](https://openvsp.org/) geometry edits and VSPAero runs so agents can generate meshes, scripts, and aerodynamic coefficients without manual GUI steps.
+## Aircraft construction
 
-## Table of contents
+`openvsp_create_aircraft` builds a conventional aircraft from typed dimensions:
 
-1. [What it provides](#what-it-provides)
-2. [Quickstart](#quickstart)
-3. [Run as a service](#run-as-a-service)
-4. [Agent playbook](#agent-playbook)
-5. [Stretch ideas](#stretch-ideas)
-6. [Accessibility & upkeep](#accessibility--upkeep)
-7. [Contributing](#contributing)
+- Fuselage length and three equal elliptical interior cross sections.
+- A single trapezoidal wing, horizontal tail, and upright vertical tail.
+- Span, root/tip chord, location, quarter-chord sweep, dihedral, incidence, tip twist, and symmetric four-series airfoil thickness.
+- Explicit input units (`m` or `ft`), with output geometry and constraints in SI.
+- Native saved-parameter checks and optional bounds on span, projected span, area, aspect ratio, taper, root/tip chord, fuselage length, and complete-aircraft bounding extents.
 
-## What it provides
+The tool saves a unique run directory containing the `.vsp3` model, generated
+AngelScript, request specification, validation report, and process logs. Existing
+models are not overwritten by aircraft creation.
 
-| Scenario | Value |
-|----------|-------|
-| OpenVSP scripting | Automate [OpenVSP](https://openvsp.org/) commands (set parameters, duplicate geometries, export meshes) without opening the GUI. |
-| VSPAero batch runs | Launch [VSPAero](https://vspu.larc.nasa.gov/) cases and capture generated metrics/CSV files for downstream optimisation. |
-| MCP transport | Publish the same functionality over STDIO or HTTP via the Model Context Protocol so ToolHive or other clients can drive geometry studies remotely. |
+This is a geometry builder. Its checks do not establish aerodynamic stability,
+component clearance, structural feasibility, or a watertight analysis mesh.
 
-## Quickstart
+## Install
 
-### 1. Install the package
+Install [OpenVSP](https://openvsp.org/download.php), then install this package in a
+Python 3.10+ environment:
 
 ```bash
-uv pip install "git+https://github.com/Three-Little-Birds/openvsp-mcp.git"
+uv venv
+uv pip install -e '.[dev]'
+export OPENVSP_BIN=/absolute/path/to/OpenVSP/vsp
+export VSPAERO_BIN=/absolute/path/to/OpenVSP/vspaero  # optional standalone solver
+export OPENVSP_OUTPUT_DIR=/absolute/path/to/artifacts
 ```
 
-Install the official binaries from the [OpenVSP download page](https://openvsp.org/download.php) (this wrapper was tested with OpenVSP/VSPAero 3.46.0 on macOS). Verify they are in your `PATH`:
+OpenVSP is executed as a separate process; its Python bindings are not required.
+The package pins `mcp>=1.20,<2` because it uses the SDK's FastMCP API.
+MCP 2.x requires a separate migration.
+
+Build the included dimensioned example:
 
 ```bash
-export OPENVSP_BIN=/Applications/OpenVSP/vsp
-export VSPAERO_BIN=/Applications/OpenVSP/vspaero
+uv run python examples/create_aircraft.py
 ```
 
-> **Tip (macOS/Linux):** if you prefer to avoid GUI installers, build the repo's ToolHive image and run the examples inside Docker:
-> ```bash
-> docker build -t openvsp-mcp-toolhive -f infra/docker/openvsp_toolhive/Dockerfile .
-> docker run --rm --entrypoint /usr/local/bin/vsp openvsp-mcp-toolhive --version
-> ```
-> Mount your geometry directory and set `OPENVSP_BIN=/usr/local/bin/vsp` when executing the Python snippets in-container.
-
-### 2. Run a scripted geometry edit
+See [examples/conventional_aircraft.json](examples/conventional_aircraft.json) for
+the complete request, including its constraint bounds. From Python:
 
 ```python
-from importlib import resources
-import shutil
-import tempfile
 from pathlib import Path
+from openvsp_mcp import AircraftCreateRequest, create_aircraft
 
-from openvsp_mcp import OpenVSPRequest, VSPCommand, execute_openvsp
-
-with resources.as_file(resources.files("openvsp_mcp.data") / "rect_wing.vsp3") as bundled:
-    with tempfile.TemporaryDirectory(prefix="openvsp_mcp_") as tmpdir:
-        geometry_path = Path(tmpdir) / "rect_wing.vsp3"
-        shutil.copy(bundled, geometry_path)
-
-        request = OpenVSPRequest(
-            geometry_file=str(geometry_path),
-            set_commands=[
-                VSPCommand(command='string geom_id = FindGeom("RectWing", 0)'),
-                VSPCommand(command='string span_id = GetParm( geom_id, "TotalSpan", "WingGeom" )'),
-                VSPCommand(command='SetParmVal( span_id, 12.0 )'),
-                VSPCommand(command='Update()'),
-            ],
-            run_vspaero=False,
-            case_name="rectwing_span12",
-        )
-
-        response = execute_openvsp(request)
-        print("Script used:", response.script_path)
-        print("ADB path:", response.result_path)  # None unless run_vspaero=True
+request = AircraftCreateRequest.model_validate_json(
+    Path("examples/conventional_aircraft.json").read_text()
+)
+response = create_aircraft(request)
+print(response.geometry_path)
+print(response.validation_passed)
+print([check for check in response.checks if not check.passed])
 ```
 
-`OpenVSPResponse` contains:
+A conflicting constraint returns `validation_passed=false` with the actual value
+and bound; it retains the model for review. Invalid requests or native execution
+failures return errors. The server does not silently resize geometry or relax
+constraints.
 
-- `script_path` – absolute path to the generated `.vspscript` you can archive for repeatability.
-- `result_path` – VSPAero `.adb` file (string) when `run_vspaero=True`, otherwise `None`. Meshes, CSVs, and other artefacts are emitted by OpenVSP next to your original `.vsp3`.
+## Sizing and typed revisions
 
-Need a starter geometry? The package ships with `openvsp_mcp.data/rect_wing.vsp3`, generated from a single OpenVSP wing primitive. The snippet above uses OpenVSP script helpers (`FindGeom` + `GetParm`) so it works out of the box. For your own models, open the geometry in the GUI, note the component name returned by `FindGeom`, and update the commands accordingly.
+`openvsp_plan_aircraft` solves a bounded wing sizing problem without running
+OpenVSP or writing files. Start with a complete conventional-aircraft specification;
+only explicitly listed `wing.span`, `wing.root_chord`, and `wing.tip_chord` may change.
+All other dimensions and angles remain fixed. Adjustable bounds use the aircraft's
+input units; sizing targets and constraint bounds use SI.
 
-## Run as a service
-
-### CLI (STDIO / Streamable HTTP)
-
-```bash
-uvx openvsp-mcp  # runs the MCP over stdio
-# or python -m openvsp_mcp
-python -m openvsp_mcp --transport streamable-http --host 0.0.0.0 --port 8000 --path /mcp
-```
-
-Registered tools:
-
-- `openvsp.inspect` – describe a geometry without modifying it.
-- `openvsp.modify` – apply scripted parameter edits (no VSPAero).
-- `openvsp.run_vspaero` – run edits followed by VSPAero.
-
-Use `python -m openvsp_mcp --describe` to list the tools at runtime.
-
-### FastAPI (REST)
-
-```bash
-uv run uvicorn openvsp_mcp.fastapi_app:create_app --factory --port 8002
-```
-
-Endpoints:
-
-- `POST /vsp/inspect` → `OpenVSPInspectResponse`
-- `POST /vsp/modify` → run edits only
-- `POST /vsp/run` → run edits + VSPAero
-
-All operations return structured JSON; explore them via the interactive docs at `http://127.0.0.1:8002/docs`.
-
-### python-sdk tool (STDIO / MCP)
+For example, to keep a 4 m developed span and size the chords for a 2 m² wing with
+taper 0.5:
 
 ```python
-from mcp.server.fastmcp import FastMCP
-from openvsp_mcp.tool import build_tool
+from openvsp_mcp import AircraftPlanRequest, plan_aircraft
 
-mcp = FastMCP("openvsp-mcp", "OpenVSP automation")
-build_tool(mcp)
-
-if __name__ == "__main__":
-    mcp.run()
+plan = plan_aircraft(
+    AircraftPlanRequest(
+        aircraft=request.aircraft,
+        adjustable=[
+            {"parameter": "wing.root_chord", "minimum": 0.2, "maximum": 1.0},
+            {"parameter": "wing.tip_chord", "minimum": 0.1, "maximum": 0.8},
+        ],
+        targets={"span_m": 4.0, "area_m2": 2.0, "taper_ratio": 0.5},
+    )
+)
+if plan.status == "ready":
+    response = create_aircraft(plan.create_request)
+else:
+    print(plan.diagnostics)
 ```
 
-Then launch with `uv run mcp dev examples/openvsp_tool.py` and connect your agent.
+Here the root and tip chords become approximately 0.667 m and 0.333 m. The planner
+uses developed area and the native projected-span aspect-ratio convention. It
+handles simultaneous span, projected span, area, aspect ratio, taper, chord bounds,
+and fixed fuselage-length constraints. Conflicting requirements return
+`status="infeasible"` with diagnostics. Numerical precision failures return
+`status="unresolved"` without claiming the requirements are impossible.
+Whole-aircraft bounding extents are marked
+`deferred`: `ready` means analytically feasible, and native validation is still
+required. Every exact target and adjustable bound is included in `create_request`
+for verification after construction.
 
-### ToolHive smoke test
+If multiple solutions exist, the planner selects the feasible span closest to the
+baseline, then the closest chord sum, then the chord split minimizing squared
+changes. It reports this policy as an assumption; it does not claim aerodynamic
+optimization or choose unlisted variables.
 
-Requires exported binaries and a geometry file reachable inside the container:
+`openvsp_update_aircraft` rebuilds typed changes from a managed candidate into a
+new run. Use its saved `report.json` as the source:
+
+```python
+from openvsp_mcp import AircraftRevisionRequest, revise_aircraft
+
+revised = revise_aircraft(
+    AircraftRevisionRequest(
+        source_report_path=response.report_path,
+        changes=[{"parameter": "wing.sweep_deg", "value": 12.0}],
+    )
+)
+print(revised.parent_candidate_id, revised.candidate_id)
+print(revised.validation_passed)
+```
+
+Lengths retain the parent's units; angles use degrees. Constraints and validation
+tolerances are inherited. Passing `constraints=[]` explicitly clears constraints;
+passing a list replaces them. A candidate with failed constraints may be revised.
+Source model/specification hashes are checked before rebuilding, and the child
+report records parent identity, hashes, and parameter changes. These hashes detect
+snapshot drift; they are not authentication. Keep the model, specification, and
+report together when relocating a bundle. Older bundles lacking integrity metadata
+must be rebuilt. Native component IDs may change during reconstruction.
+
+Run the complete failing-candidate → plan → typed-repair example:
 
 ```bash
-export OPENVSP_BIN=/path/to/vsp
-export VSPAERO_BIN=/path/to/vspaero    # optional
-export OPENVSP_GEOMETRY=/path/to/model.vsp3
-uvx --with 'mcp==1.20.0' python scripts/integration/run_openvsp.py
-# ToolHive 2025+ defaults to Streamable HTTP; select the same transport when registering
-# the workload manually to avoid the legacy SSE 502 proxy issue.
+uv run python examples/plan_and_revise.py
 ```
 
-## Agent playbook
+## Dimension conventions
 
-- **Geometry studies** - script sweep operations (span, twist, control surface deflections) and archive each variant.
-- **Aerodynamic coefficients** - hand VSPAero results to `ctrltest-mcp` or custom controllers.
-- **Mesh exports** - agents can request STL/OBJ assets for CFD or manufacturing pipelines.
+All input length fields share `aircraft.units`. Constraint metric suffixes
+`_m` and `_m2` always mean metres and square metres, even for inputs in feet.
 
-## Stretch ideas
+| Quantity | Convention |
+|---|---|
+| Wing and horizontal-tail span | Full developed span, including both mirrored halves |
+| Vertical-tail span | One-sided root-to-tip height; no mirrored second fin |
+| `x_le`, `z` | Root leading edge from the fuselage nose; X aft, Z up |
+| `sweep_deg` | Quarter-chord sweep |
+| `incidence_deg` | Root twist about the leading edge |
+| `tip_twist_deg` | Tip twist relative to root incidence |
+| `thickness_ratio` | Symmetric NACA four-series thickness/chord at both stations |
+| Fuselage width/height | Cross-section dimensions at 25%, 50%, and 75% length |
+| `wing_aspect_ratio` | OpenVSP TotalAR: projected span squared / developed planform area |
+| `wing_taper_ratio` | Tip chord / root chord |
+| `aircraft_*_extent_m` | Union of native component bounding boxes, including thickness and placement |
 
-1. Pair with `foam-agent-mcp-core` to auto-generate mesh-ready cases.
-2. Use deck.gl to visualise planform edits by surfacing geometry metadata in the response.
-3. Schedule nightly configuration sweeps (span x sweep x incidence) and store the results for design-of-experiments studies.
+The airfoil family, fuselage station layout, and other assumptions are included
+in every report. Stored dimensions are compared against requested values using
+`absolute_tolerance + relative_tolerance * abs(target)`. User-supplied constraint
+bounds are inclusive, permitting only floating-point roundoff within eight ULPs
+of the measured value or bound, rather than the dimensional tolerance above.
 
-## Accessibility & upkeep
+## MCP service
 
-- Run `uv run pytest` before committing; tests mock VSPAero calls so they finish quickly.
-- Keep OpenVSP/VSPAero versions consistent across developers to avoid geometry mismatches.
+```bash
+uv run openvsp-mcp                           # stdio
+uv run openvsp-mcp --describe                # schemas and annotations
+uv run openvsp-mcp --transport streamable-http --host 127.0.0.1 --port 8000 --path /mcp
+```
 
-## Contributing
+| Tool | Behavior |
+|---|---|
+| `openvsp_create_aircraft` | Create and verify a new dimensioned conventional aircraft |
+| `openvsp_plan_aircraft` | Solve bounded wing sizing analytically; return a build request or infeasibility diagnostics |
+| `openvsp_update_aircraft` | Rebuild typed changes into a new candidate, preserving and verifying the parent snapshot |
+| `openvsp.inspect` | Read component IDs and saved native parameters; no binary execution or model writes |
+| `openvsp.modify` | Apply trusted raw AngelScript commands to an existing model in place |
+| `openvsp.run_vspaero` | Apply raw edits, then run a preconfigured standalone VSPAero case |
 
-1. `uv pip install --system -e .[dev]`
-2. Run `uv run ruff check .` and `uv run pytest`
-3. Submit PRs with sample scripts or geometry diffs so reviewers can validate quickly.
+MCP tool arguments are nested under `request`. For example, pass the contents of
+the example JSON as `{"request": <example contents>}` to `openvsp_create_aircraft`.
+Responses include structured content and output schemas, with explicit read/write
+annotations. Legacy dotted tool names remain available.
 
-MIT license - see [LICENSE](LICENSE).
-- OpenVSP ships under NASA’s license; VSPAero usage must comply with the terms that accompany your download. Commercial redistribution generally requires a separate agreement—check the [official FAQ](https://openvsp.org/#license) before packaging binaries into your MCP workloads.
+### Claude Desktop
+
+Configure a local stdio server using the installed environment's absolute Python
+path. See Anthropic's [local MCP documentation](https://support.claude.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop).
+
+```json
+{
+  "mcpServers": {
+    "openvsp": {
+      "command": "/absolute/path/to/openvsp-mcp/.venv/bin/python",
+      "args": ["-m", "openvsp_mcp"],
+      "env": {
+        "OPENVSP_BIN": "/absolute/path/to/OpenVSP/vsp",
+        "OPENVSP_OUTPUT_DIR": "/absolute/path/to/artifacts"
+      }
+    }
+  }
+}
+```
+
+### ChatGPT and remote Claude connections
+
+ChatGPT supports custom MCP servers over streaming HTTP or SSE, with public
+HTTPS endpoints or [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels).
+See OpenAI's [custom MCP server guide](https://developers.openai.com/api/docs/guides/custom-mcp-server).
+Anthropic's [remote connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp)
+explains its cloud-origin connections and endpoint reachability requirements.
+
+Keep OpenVSP on the machine running the server. The HTTP bind defaults to
+loopback. If a reverse proxy preserves its public Host header, explicitly allow it:
+
+```bash
+uv run openvsp-mcp --transport streamable-http --allowed-host vsp.example.com
+```
+
+Use `--allowed-origin https://vsp.example.com` when a browser sends that Origin.
+These flags preserve Host/Origin validation; they do not provide authentication.
+The existing raw-script tools execute caller-provided code with server privileges,
+so use this server with trusted clients and authenticated ingress.
+OAuth, public deployment, and account connections are not configured by this package.
+
+Paths in responses belong to the server filesystem. They are not automatically
+downloadable from a cloud chat. Remote artifact delivery requires an authenticated
+file endpoint or an MCP resource integration.
+
+## Agent workflow
+
+1. Extract the aircraft dimensions, units, hard constraints, and permitted design
+   variables. Obtain a complete baseline specification and record shape assumptions.
+2. Call `openvsp_plan_aircraft` when wing sizing is needed. Inspect diagnostics and
+   deferred checks; never treat `ready` as a native validation pass.
+3. Pass `plan.create_request` to `openvsp_create_aircraft`. Read
+   `validation_passed`, actual measurements, and every failed check.
+4. For further changes, use `openvsp_update_aircraft` with the saved report and
+   explicit parameter replacements. When applying planner changes to a parent,
+   also pass `plan.create_request.constraints` to preserve sizing targets and bounds.
+5. Return the final model and report. Report which geometry checks passed; keep
+   aerodynamic and structural claims separate.
+
+The server sizes, builds, and measures each candidate deterministically. The client
+model maps requirements, selects permitted variables, and controls iteration.
+No provider API key is needed by this server.
+
+## REST surface
+
+```bash
+uv run uvicorn openvsp_mcp.fastapi_app:create_app --factory --host 127.0.0.1 --port 8002
+```
+
+`POST /vsp/aircraft`, `POST /vsp/aircraft/plan`, `POST /vsp/aircraft/revise`,
+`POST /vsp/inspect`, `POST /vsp/modify`, and `POST /vsp/run`
+accept the corresponding request models. These REST routes are separate from the
+MCP `/mcp` endpoint.
+
+## Raw edits and VSPAero
+
+Raw edits retain a script, model snapshot, request, and logs. Only a completed
+native run replaces the input model. OpenVSP API errors, missing completion,
+invalid output, and timeouts are surfaced concretely. Relative file references
+inside custom commands resolve from that run's artifact directory.
+
+For `run_vspaero`, `case_name` is a case-base path without a suffix. The standalone
+solver requires a matching `.vspaero` input and prepared mesh. The caller must
+prepare a mesh consistent with the edited geometry; this tool does not generate
+or verify that mesh. A `.vsp3` alone is not a solver case.
+
+## Development and validation
+
+```bash
+uv run ruff check .
+uv run pytest
+OPENVSP_BIN=/absolute/path/to/vsp uv run pytest  # also run native integration tests
+```
+
+Tests cover strict dimensions and units, projected-span conventions, constraint
+failure, read-only inspection, retained artifacts, failed-edit recovery, timeouts,
+and MCP initialize/list/call exchanges over stdio and Streamable HTTP.
+Native tests construct metric and imperial variants and verify the saved model.
+Protocol tests do not constitute end-to-end testing inside Claude or ChatGPT.
+
+See [docs/contribution-roadmap.md](docs/contribution-roadmap.md) for the next
+contribution stages. Include reproducible specifications and native reports in
+geometry-related PRs.
+
+MIT license for this wrapper. OpenVSP binaries have their own license; see the
+[OpenVSP license](https://openvsp.org/license.php) before redistribution.
